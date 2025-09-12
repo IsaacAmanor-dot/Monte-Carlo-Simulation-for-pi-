@@ -28,7 +28,7 @@ The work demonstrates:
 - Halts when successive estimates of π agree to **s significant figures** for a fixed number of checks.  
 - Does **not** use the true value of π for stopping.  
 - Outputs results to CSV with columns:  
-  `s_sigfigs, N_used, $\hat\pi$, time_s, iters_batches, checks`.  
+  `$s$ , $N_{\text{used}$, $\hat{\pi}$, time (s), batches, checks`.  
 
 ### Task 3: Function with live visualization
 - User inputs target precision `s`.  

@@ -41,8 +41,13 @@ The work demonstrates:
 
 ---
 
-## Example Output
 
+
+**Example Results**
+
+| Estimated π vs N | Execution Time vs N |
+|------------------|----------------------|
+| ![π vs N](figures/fig_task1_min_pi_vs_N.pdf) | ![Execution Time vs N](figures/fig_task1_min_time_vs_N.pdf) |
 
 
 Command window:

@@ -1,4 +1,6 @@
 %% PROJECT_MONTE_CARLO
+
+
 %% Task 1 (minimal): Monte Carlo estimate of pi using a FOR loop over fixed N.    % Brief description of the task
 % Outputs: (1) pi_hat vs N, (2) |pi_hat - pi| vs N, (3) time vs N, (4) |error| vs time. % Required plots for the report
 
@@ -6,9 +8,9 @@
 clear; clc; close all;% Clear variables, clear command window, and close all open figures
 rng(0); % Fix the random-number seed so results are reproducible
 % LaTeX text rendering (for nicer math in labels/titles)
-set(groot,'defaultTextInterpreter','latex');            % Use LaTeX for text (titles, axis labels)
+set(groot,'defaultTextInterpreter','latex'); % Use LaTeX for text (titles, axis labels)
 set(groot,'defaultAxesTickLabelInterpreter','latex');   % Use LaTeX for tick labels
-set(groot,'defaultLegendInterpreter','latex');          % Use LaTeX for legend entries
+set(groot,'defaultLegendInterpreter','latex'); % Use LaTeX for legend entries
 
 %% Configuration
 N_values = round(logspace(3,9,10));% Vector of sample sizes N: 10^3, ..., 10^9 (10 log-spaced points)
@@ -119,130 +121,150 @@ disp('Saved table: isaac_amanor_task1_Forloop.csv'); % Confirm the saved CSV fil
 
 
 %% project1_task2_while_precision_basic_eol.m%Section header & filename hint
-% Task 2 — Monte Carlo estimate of pi with a WHILE loop and auto-stop (no true pi).%High-level description
-% Stop rule: successive running estimates must agree to s significant figures for STABILITY_OK checks.%Stop condition
+% Task 2 — Monte Carlo estimate of pi with a WHILE loop and auto-stop (no true pi). % Header
+% Stop rule: successive running estimates must agree to s significant figures for STABILITY_OK checks. % Description
 
-clear; clc; close all;%Reset workspace, console, and figures
-rng(1,'twister');%Reproducible RNG seed
+clear; clc; close all; % Reset workspace, Command Window, and all figures
+rng(1,'twister'); % Fix RNG seed and algorithm (Mersenne Twister) for reproducibility
 
-%% Configuration (no plotting)%Config section
-s_list       = [2 3 4 5 6 7];%Target significant figures to test
-BATCH        = 5e6;%Samples per while-iteration
-CHECK_EVERY  = 1e6;%Check stability every this many new samples
-STABILITY_OK = 5;%Consecutive matches required to stop
-MAX_POINTS   = 1e9;%Safety cap on total samples
-save_out     = true;%Enable CSV save
+%% Configuration (no plotting)       % Section header
+s_list       = [2 3 4 5 6 7];  % Target significant figures we want to achieve
+BATCH        = 5e6;  % Number of points drawn per iteration (stream in batches)
+CHECK_EVERY  = 1e6; % Perform stability check every this many new samples
+STABILITY_OK = 5;  % Require this many consecutive matches to declare stable precision
+MAX_POINTS   = 1e9; % Safety cap on total number of samples (prevents runaway loop)
+save_out     = true;% If true, save results table to CSV
 
-out_dir = "task2_outputs";%Output directory
-if save_out && ~exist(out_dir,'dir'), mkdir(out_dir); end%Create directory if missing
-out_csv = fullfile(out_dir, "task2_results_" + datestr(now,'yyyymmdd_HHMMSS') + ".csv");%Timestamped CSV filename
+out_dir = "task2_outputs"; % Directory name for outputs
+if save_out && ~isfolder(out_dir)   % If saving and folder doesn't exist
+    mkdir(out_dir);  % Create the folder
+end
+out_csv = fullfile(out_dir, "task2_results_" + datestr(now,'yyyymmdd_HHMMSS') + ".csv"); % Build timestamped CSV filename
 
-results = table('Size',[numel(s_list) 6], ...%Preallocate table
-    'VariableTypes',{'double','double','double','double','double','double'}, ...%Column types
-    'VariableNames',{'s_sigfigs','N_used','pi_hat','time_s','iters_batches','checks'});%Column names
+% Preallocate results table with 8 columns (numeric + string for clarity)
+results = table('Size',[numel(s_list) 8], ...                          % Rows = length of s_list, columns = 8
+    'VariableTypes',{'double','double','double','double','double','double','double','string'}, ... % Data types
+    'VariableNames',{'s_sigfigs','N_used','pi_hat','time_s','iters_batches','checks','pi_hat_raw','pi_hat_s_sigfigs'}); % Column names
 
-fprintf('Task 2: while-loop with stability-based stopping (no true pi used)\n');%Banner
+fprintf('Task 2: while-loop with stability-based stopping (no true pi used)\n'); % Banner to console
 
-%% Main loop over requested precisions%Loop header
-for idx = 1:numel(s_list)%For each target s
-    s = s_list(idx);%Current target significant figures
-    fprintf('\nTarget: %d significant figures\n', s);%Announce target
+%% Main loop over requested precisions
+for idx = 1:numel(s_list)  % Loop over each precision target
+    s = s_list(idx); % Current significant figures
+    fprintf('\nTarget: %d significant figures\n', s); % Announce current target
 
-    n_inside   = 0;%Running count of hits inside quarter-circle
-    N          = 0;%Total samples seen
-    t0         = tic;%Start timer
-    last_pi    = NaN;%Last estimate at a check
-    consec_ok  = 0;%Consecutive agreements counter
-    next_check = CHECK_EVERY;%Next absolute N to check
-    iters      = 0;%Batches processed
-    chk_count  = 0;%Checks performed
+    n_inside   = 0; % Counter: points inside quarter circle
+    N          = 0; % Counter: total points processed
+    t0         = tic; % Start timer
+    last_pi    = NaN; % Previous estimate at last check (none yet)
+    consec_ok  = 0; % Consecutive agreements counter
+    next_check = CHECK_EVERY; % When to perform the next stability check
+    iters      = 0; % Number of batches processed
+    chk_count  = 0; % Number of checks performed
 
-    while true%Stream until stable or capped
-        b = min(BATCH, MAX_POINTS - N);%Batch size obeying cap
-        if b <= 0%Cap reached
-            warning('Reached MAX_POINTS without stability for s=%d.', s);%Warn user
-            break;%Exit while
-        end%End cap guard
-        iters = iters + 1;%Count this batch
+    while true  % Infinite loop until break condition
+        b = min(BATCH, MAX_POINTS - N); % Batch size = min(BATCH, points remaining under MAX_POINTS)
+        if b <= 0   % If no more points can be drawn without exceeding MAX_POINTS
+            warning('Reached MAX_POINTS without stability for s=%d.', s); % Warn and exit
+            break;
+        end
+        iters = iters + 1; % Increment batch counter
 
-        x = rand(b,1);%Uniform x in [0,1]
-        y = rand(b,1);%Uniform y in [0,1]
-        n_inside = n_inside + sum(x.*x + y.*y <= 1.0);%Accumulate hits
-        N = N + b;%Update total samples
+        x = rand(b,1); % Draw b uniform x-values in [0,1]
+        y = rand(b,1); % Draw b uniform y-values in [0,1]
+        n_inside = n_inside + sum(x.*x + y.*y <= 1.0); % Update count of points inside circle
+        N = N + b; % Update total number of points
 
-        while N >= next_check%Perform due checks (may be multiple)
-            chk_count = chk_count + 1;%Count this check
-            p_hat  = n_inside / N;%Hit probability estimate
-            pi_now = 4 * p_hat;%Running pi estimate
+        while N >= next_check% Perform all due stability checks
+            chk_count = chk_count + 1; % Increment checks counter
+            p_hat  = n_inside / N;  % Proportion of points inside
+            pi_now = 4 * p_hat; % Monte Carlo estimate of pi
 
-            if ~isnan(last_pi)%If there is a previous estimate
-                if agree_to_s_sigfigs(pi_now, last_pi, s)%Check s-sig-fig agreement
-                    consec_ok = consec_ok + 1;%Extend streak
-                else%Mismatch
-                    consec_ok = 0;%Reset streak
-                end%End agreement test
-            end%End previous-estimate guard
+            if ~isnan(last_pi) % If there is a previous estimate
+                if agree_to_s_sigfigs(pi_now, last_pi, s) % Test agreement to s significant figures
+                    consec_ok = consec_ok + 1; % Increment streak
+                else
+                    consec_ok = 0; % Reset streak if mismatch
+                end
+            end
 
-            last_pi   = pi_now;%Cache for next comparison
-            next_check = next_check + CHECK_EVERY;%Schedule next check
+            last_pi    = pi_now; % Update last estimate
+            next_check = next_check + CHECK_EVERY; % Schedule next check
 
-            if consec_ok >= STABILITY_OK%Stable enough
-                break;%Exit inner check loop
-            end%End stability condition
-        end%End while over due checks
+            if consec_ok >= STABILITY_OK % If enough consecutive agreements
+                break; % Exit check loop
+            end
+        end
 
-        if consec_ok >= STABILITY_OK%If stable after this batch
-            break;%Exit main while
-        end%End post-batch stability check
-    end%End streaming while
+        if consec_ok >= STABILITY_OK % If stable after this batch
+            break; % Exit main loop
+        end
+    end
 
-    elapsed    = toc(t0);%Elapsed time for this s
-    pi_hat_val = 4 * (n_inside / N);%Final estimate from counts
+    elapsed       = toc(t0); % Record elapsed time
+    pi_hat_raw    = 4 * (n_inside / N);   % Full-precision estimate
+    pi_hat_round  = round_to_sigfigs(pi_hat_raw, s); % Rounded numeric estimate to s sig figs
+    pi_hat_str    = sigfig_string(pi_hat_raw, s); % String with exactly s sig figs
 
-    results.s_sigfigs(idx)     = s;%Log s
-    results.N_used(idx)        = N;%Log N used
-    results.pi_hat(idx)        = pi_hat_val;%Log pi_hat
-    results.time_s(idx)        = elapsed;%Log time
-    results.iters_batches(idx) = iters;%Log batches
-    results.checks(idx)        = chk_count;%Log checks
+    % Save results into table
+    results.s_sigfigs(idx)        = s; % Target precision (sf)
+    results.N_used(idx)           = N; % Total points used
+    results.pi_hat(idx)           = pi_hat_round; % Rounded numeric estimate
+    results.time_s(idx)           = elapsed; % Elapsed time
+    results.iters_batches(idx)    = iters; % Batches processed
+    results.checks(idx)           = chk_count;% Checks performed
+    results.pi_hat_raw(idx)       = pi_hat_raw; % Raw estimate (full precision)
+    results.pi_hat_s_sigfigs(idx) = string(pi_hat_str); % String form with exactly s sig figs
 
-    fprintf('  Done: N=%s, pi_hat=%.10f, time=%.2fs, batches=%d, checks=%d\n', ...%One-line summary
-        format_int(N), pi_hat_val, elapsed, iters, chk_count);%Pretty numbers
-end%End for over s_list
+    % Console summary for this s
+    fprintf(['  Done: N=%s, pi_hat_raw=%.10f, pi_hat_%dsf=%s, time=%.2fs, ', ...
+             'batches=%d, checks=%d\n'], ...
+            format_int(N), pi_hat_raw, s, pi_hat_str, ...
+            elapsed, iters, chk_count);
+end
 
-%% Save CSV (new file per run)%CSV section
-if save_out%If saving enabled
-    writetable(results, out_csv);%Write table to CSV
-    fprintf('\nSaved: %s\n', out_csv);%Report path
-end%End save guard
+%% Save CSV (new file per run)
+if save_out
+    if ~isfolder(out_dir), mkdir(out_dir); end % Ensure directory exists
+    writetable(results, char(out_csv));  % Save results table to CSV
+    fprintf('\nSaved: %s\n', out_csv);  % Report path to console so I can use for my analysis
+end
 
-%% Summary%Console summary
-disp('Summary (Task 2):');%Label
-disp(results);%Show results
+%% Summary
+format long g  % Show more digits in numeric display
+disp('Summary (Task 2):'); % Label
+disp(results); % Display results table
 
+%% Helpers (local functions)
+function tf = agree_to_s_sigfigs(a,b,s) % Check if a and b agree to s sig figs
+    if ~isfinite(a) || ~isfinite(b) % Reject NaN/Inf
+        tf = false; return;
+    end
+    tf = isequal(round_to_sigfigs(a,s), round_to_sigfigs(b,s)); % Compare after rounding
+end
 
-%% Helpers (single, shared) 
-function tf = agree_to_s_sigfigs(a,b,s)%Return true if a and b agree to s significant figures
-    if ~isfinite(a) || ~isfinite(b), tf = false; return; end%Reject NaN/Inf
-    if a == 0 || b == 0, tf = (a == b); return; end%Zero-edge case
-    ea = floor(log10(abs(a)));%Order of magnitude of a
-    eb = floor(log10(abs(b)));%Order of magnitude of b
-    if ea ~= eb, tf = false; return; end%Different magnitudes cannot match to s sig figs
-    tol = 0.5 * 10^(ea - (s-1));%Half-unit at the s-th significant digit (absolute tolerance)
-    tf  = abs(a - b) <= tol;%Within tolerance => agree
-end%End agree_to_s_sigfigs
+function y = round_to_sigfigs(x, s)  % Round x to s significant figures
+    y = x;
+    mask = (x ~= 0) & isfinite(x);  % Only round finite, nonzero values
+    if any(mask)
+        e = floor(log10(abs(x(mask)))); % Orders of magnitude
+        f = s - 1 - e; % Decimal places required
+        y(mask) = round(x(mask), f); % Apply rounding
+    end
+end
 
-function t = format_int(N)%Add thousands separators
-    t = regexprep(sprintf('%.0f',N), '(\d)(?=(\d{3})+(?!\d))', '$1,');%Comma grouping
-end%End format_int
+function s = sigfig_string(x, n) % Format as string with n sig figs
+    if x==0
+        s = sprintf('%.*f', n-1, 0); return;
+    end
+    e = floor(log10(abs(x))); % Magnitude
+    f = max(n - 1 - e, 0);  % Decimal places
+    s = sprintf(['%.' num2str(f) 'f'], x); % Build string
+end
 
-function s = sigfig_string(x, n) % Format numeric x to n significant figures as a string (fixed point where possible)
-    if x==0, s = sprintf('%.*f', n-1, 0); return; end % Special case: zero formatted with n-1 decimals
-    e = floor(log10(abs(x))); % Order of magnitude of x
-    f = max(n - 1 - e, 0); % Number of decimals to show to reach n significant figures
-    s = sprintf(['%.' num2str(f) 'f'], x); % Build formatted fixed-point string
-end % End sigfig_string
-
+function t = format_int(N)              % Pretty integer formatting with commas
+    t = regexprep(sprintf('%.0f',N), '(\d)(?=(\d{3})+(?!\d))', '$1,');
+end
 
 %% Task 3 function 
 function Pi_estimate_n = mcpi_task3_live(precision_sf) % Function entry point; returns Monte Carlo estimate of pi

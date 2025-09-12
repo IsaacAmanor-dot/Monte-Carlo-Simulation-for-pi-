@@ -43,10 +43,3 @@ The work demonstrates:
 
 
 
-**Example Results**
-
-| Estimated π vs N | Execution Time vs N |
-
-
-
-Command window:

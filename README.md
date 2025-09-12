@@ -21,7 +21,26 @@ The work demonstrates:
   - π vs N  
   - Absolute error vs N (log-log)  
   - Runtime vs N (log-log)  
+  - Absolute error vs runtime (precision–cost tradeoff)
+### Task 1: For-loop with fixed N
+- Generates random points for increasing $N$.  
+- Computes $\hat{\pi}$, absolute error, and runtime.  
+- Produces plots:  
+  - π vs N  
+  - Absolute error vs N (log-log)  
+  - Runtime vs N (log-log)  
   - Absolute error vs runtime (precision–cost tradeoff)  
+
+**Example Results**
+
+| Estimated π vs N | Execution Time vs N |
+|------------------|----------------------|
+| ![π vs N](figures/fig_task1_min_pi_vs_N.png) | ![Execution Time vs N](figures/fig_task1_min_time_vs_N.png) |
+
+- 📄 High-resolution PDFs are also available:  
+  - [π vs N (PDF)](figures/fig_task1_min_pi_vs_N.pdf)  
+  - [Execution Time vs N (PDF)](figures/fig_task1_min_time_vs_N.pdf)  
+
 
 ### Task 2: While-loop with stability-based auto-stop
 - Uses streaming batches of random points.  
@@ -46,8 +65,7 @@ The work demonstrates:
 **Example Results**
 
 | Estimated π vs N | Execution Time vs N |
-|------------------|----------------------|
-| ![π vs N](figures/fig_task1_min_pi_vs_N.pdf) | ![Execution Time vs N](figures/fig_task1_min_time_vs_N.pdf) |
+
 
 
 Command window:
